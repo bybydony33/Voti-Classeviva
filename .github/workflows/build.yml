@@ -43,25 +43,25 @@ jobs:
 
     - name: Create buildozer.spec
       run: |
-        cd /home/runner/work/classeviva/classeviva
+        cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
         buildozer init
 
     - name: Configure buildozer.spec
       run: |
-        cd /home/runner/work/classeviva/classeviva
+        cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
         sed -i 's/^title = My Application/title = Classeviva Stats/' buildozer.spec
-        sed -i 's/^package.name = myapp/package.name = classeviva_stats/' buildozer.spec
+        sed -i 's/^package.name = myapp/package.name = voti_classeviva/' buildozer.spec
         sed -i 's/^source.dir = ./source.dir = ./' buildozer.spec
         sed -i 's/^source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas/' buildozer.spec
         sed -i 's/^android.permissions = INTERNET/android.permissions = INTERNET,ACCESS_NETWORK_STATE/' buildozer.spec
 
     - name: Build APK with buildozer
       run: |
-        cd /home/runner/work/classeviva/classeviva
+        cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
         buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: /home/runner/work/classeviva/classeviva/bin/*.apk
+        path: /home/runner/work/Voti-Classeviva/Voti-Classeviva/bin/*.apk
