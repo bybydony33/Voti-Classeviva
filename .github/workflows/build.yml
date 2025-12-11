@@ -22,7 +22,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y git default-jdk-headless ant autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev openssl libssl-dev
-
     - name: Setup Java
       uses: actions/setup-java@v3
       with:
@@ -37,27 +36,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install buildozer cython
-
     - name: Accept all Android SDK licenses
       run: |
-        mkdir -p /home/runner/.android/licenses
+        mkdir -p /home/runner/.android
         echo "count=0" > /home/runner/.android/repositories.cfg
-        echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > /home/runner/.android/licenses/android-sdk-license
-        echo -e "\n504667f4c0de7973335447fc81046d58f4826b97" > /home/runner/.android/licenses/android-sdk-preview-license
-        echo -e "\nd975f751696cffcb30c7c327ab45c0ae1e123c62" > /home/runner/.android/licenses/android-sdk-preview-license-2
-
-    - name: Install Android Build Tools
-      run: |
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0"
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34"
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.1.8937393"
-
+        echo "license.android.sdk.preview=accepted" >> /home/runner/.android/repositories.cfg
+        cd /home/runner
+        yes 2>/dev/null | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+        yes 2>/dev/null | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" > /dev/null 2>&1 || true
     - name: Create buildozer.spec
       run: |
         cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
         buildozer init
-
     - name: Configure buildozer.spec
       run: |
         cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
@@ -66,51 +56,19 @@ jobs:
         sed -i 's/^source.dir = ./source.dir = ./' buildozer.spec
         sed -i 's/^source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas/' buildozer.spec
         sed -i 's/^android.permissions = INTERNET/android.permissions = INTERNET,ACCESS_NETWORK_STATE/' buildozer.spec
-        sed -i 's/^android.api = .*/android.api = 34/' buildozer.spec
+        sed -i 's/^android.api = .*/android.api = 31/' buildozer.spec
         sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
-        sed -i 's/^android.ndk_version = .*/android.ndk_version = 25.1.8937393/' buildozer.spec
-        sed -i 's/^android.release_artifact = .*/android.release_artifact = aab/' buildozer.spec
-        sed -i 's/^android.gradle_dependencies = .*/android.gradle_dependencies =/' buildozer.spec
-        sed -i 's/^android.add_src = .*/android.add_src =/' buildozer.spec
-
-    - name: Verify project files
-      run: |
-        cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
-        echo "=== Project structure ==="
-        ls -la
-        echo "=== Main Python file ==="
-        if [ -f "classeviva-android.py" ]; then echo "Found classeviva-android.py"; else echo "classeviva-android.py NOT FOUND"; fi
-
-    - name: Verify Android SDK and Build Tools
-      run: |
-        echo "=== Checking Android SDK ==="
-        ls -la $ANDROID_HOME/
-        echo "=== Checking build-tools ==="
-        ls -la $ANDROID_HOME/build-tools/
-        echo "=== Checking AIDL ==="
-        find $ANDROID_HOME/build-tools -name "aidl" -type f
-
+        sed -i 's/^android.ndk = .*/android.ndk = 25.1.8937393/' buildozer.spec
     - name: Build APK with buildozer
       run: |
         cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
-        export ANDROID_SDK_ROOT=$ANDROID_HOME
-        buildozer android debug
-        echo "=== Build completed ==="
-        echo "=== Searching for APK ==="
+        buildozer android debug 2>&1 | tee build.log
+        echo "Build completed, searching for APK..."
         find . -name "*.apk" -type f
-
-    - name: Check build directory
-      if: always()
-      run: |
-        cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
-        echo "=== Contents of .buildozer ==="
-        ls -la .buildozer/android/platform/ || echo ".buildozer directory not found"
-        echo "=== Full directory search ==="
-        find /home/runner/.buildozer -name "*.apk" -type f 2>/dev/null || echo "No APK found in .buildozer"
-
+        ls -la bin/ || echo "bin directory not found"
     - name: Upload APK
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: app-release
-        path: /home/runner/.buildozer/android/platform/build-*/dist/*.apk
+        path: /home/runner/work/Voti-Classeviva/Voti-Classeviva/bin/**/*.apk
