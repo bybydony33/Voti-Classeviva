@@ -18,10 +18,10 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        sudo apt-get update
+        sudo apt-get install -y git default-jdk-headless ant autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev openssl libssl-dev
 
     - name: Setup Java
       uses: actions/setup-java@v3
@@ -29,18 +29,39 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
       with:
-        flutter-version: '3.19.0' # Versione stabile recente
-        channel: 'stable'
+        api-level: 31
+        ndk-version: 25.1.8937393
 
-    - name: Build APK with Flet
+    - name: Install Python dependencies
       run: |
-        flet build apk --verbose
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install buildozer cython
+
+    - name: Create buildozer.spec
+      run: |
+        cd /home/runner/work/classeviva/classeviva
+        buildozer init
+
+    - name: Configure buildozer.spec
+      run: |
+        cd /home/runner/work/classeviva/classeviva
+        sed -i 's/^title = My Application/title = Classeviva Stats/' buildozer.spec
+        sed -i 's/^package.name = myapp/package.name = classeviva_stats/' buildozer.spec
+        sed -i 's/^source.dir = ./source.dir = ./' buildozer.spec
+        sed -i 's/^source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas/' buildozer.spec
+        sed -i 's/^android.permissions = INTERNET/android.permissions = INTERNET,ACCESS_NETWORK_STATE/' buildozer.spec
+
+    - name: Build APK with buildozer
+      run: |
+        cd /home/runner/work/classeviva/classeviva
+        buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: build/app/outputs/flutter-apk/app-release.apk
+        path: /home/runner/work/classeviva/classeviva/bin/*.apk
