@@ -40,16 +40,18 @@ jobs:
 
     - name: Accept all Android SDK licenses
       run: |
-        mkdir -p /home/runner/.android
-        echo "count=0" > /home/runner/.android/repositories.cfg
-        for license in $(find $ANDROID_HOME/licenses -type f -name '*.txt' | xargs basename -a); do
-          echo "$license" | grep -q "^" && echo "accepted" > /home/runner/.android/licenses/$license || true
-        done
         mkdir -p /home/runner/.android/licenses
+        echo "count=0" > /home/runner/.android/repositories.cfg
         echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > /home/runner/.android/licenses/android-sdk-license
         echo -e "\n504667f4c0de7973335447fc81046d58f4826b97" > /home/runner/.android/licenses/android-sdk-preview-license
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --update --no_https 2>&1 || true
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" --no_https 2>&1 || true
+        echo -e "\nd975f751696cffcb30c7c327ab45c0ae1e123c62" > /home/runner/.android/licenses/android-sdk-preview-license-2
+
+    - name: Install Android Build Tools
+      run: |
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0"
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34"
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.1.8937393"
 
     - name: Create buildozer.spec
       run: |
@@ -66,8 +68,10 @@ jobs:
         sed -i 's/^android.permissions = INTERNET/android.permissions = INTERNET,ACCESS_NETWORK_STATE/' buildozer.spec
         sed -i 's/^android.api = .*/android.api = 34/' buildozer.spec
         sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
-        sed -i 's/^android.ndk = .*/android.ndk = 25.1.8937393/' buildozer.spec
+        sed -i 's/^android.ndk_version = .*/android.ndk_version = 25.1.8937393/' buildozer.spec
         sed -i 's/^android.release_artifact = .*/android.release_artifact = aab/' buildozer.spec
+        sed -i 's/^android.gradle_dependencies = .*/android.gradle_dependencies =/' buildozer.spec
+        sed -i 's/^android.add_src = .*/android.add_src =/' buildozer.spec
 
     - name: Verify project files
       run: |
@@ -77,9 +81,19 @@ jobs:
         echo "=== Main Python file ==="
         if [ -f "classeviva-android.py" ]; then echo "Found classeviva-android.py"; else echo "classeviva-android.py NOT FOUND"; fi
 
+    - name: Verify Android SDK and Build Tools
+      run: |
+        echo "=== Checking Android SDK ==="
+        ls -la $ANDROID_HOME/
+        echo "=== Checking build-tools ==="
+        ls -la $ANDROID_HOME/build-tools/
+        echo "=== Checking AIDL ==="
+        find $ANDROID_HOME/build-tools -name "aidl" -type f
+
     - name: Build APK with buildozer
       run: |
         cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
+        export ANDROID_SDK_ROOT=$ANDROID_HOME
         buildozer android debug
         echo "=== Build completed ==="
         echo "=== Searching for APK ==="
