@@ -68,9 +68,13 @@ jobs:
       run: |
         cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
         buildozer android debug 2>&1 | tee build.log
+        echo "Build completed, searching for APK..."
+        find . -name "*.apk" -type f
+        ls -la bin/ || echo "bin directory not found"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: app-release
-        path: /home/runner/work/Voti-Classeviva/Voti-Classeviva/bin/*.apk
+        path: /home/runner/work/Voti-Classeviva/Voti-Classeviva/bin/**/*.apk
