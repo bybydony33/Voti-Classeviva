@@ -64,17 +64,34 @@ jobs:
         sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
         sed -i 's/^android.ndk = .*/android.ndk = 25.1.8937393/' buildozer.spec
 
+    - name: Verify project files
+      run: |
+        cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
+        echo "=== Project structure ==="
+        ls -la
+        echo "=== Main Python file ==="
+        if [ -f "classeviva-android.py" ]; then echo "Found classeviva-android.py"; else echo "classeviva-android.py NOT FOUND"; fi
+
     - name: Build APK with buildozer
       run: |
         cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
-        buildozer android debug 2>&1 | tee build.log
-        echo "Build completed, searching for APK..."
+        buildozer android debug
+        echo "=== Build completed ==="
+        echo "=== Searching for APK ==="
         find . -name "*.apk" -type f
-        ls -la bin/ || echo "bin directory not found"
+
+    - name: Check build directory
+      if: always()
+      run: |
+        cd /home/runner/work/Voti-Classeviva/Voti-Classeviva
+        echo "=== Contents of .buildozer ==="
+        ls -la .buildozer/android/platform/ || echo ".buildozer directory not found"
+        echo "=== Full directory search ==="
+        find /home/runner/.buildozer -name "*.apk" -type f 2>/dev/null || echo "No APK found in .buildozer"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: app-release
-        path: /home/runner/work/Voti-Classeviva/Voti-Classeviva/bin/**/*.apk
+        path: /home/runner/.buildozer/android/platform/build-*/dist/*.apk
