@@ -42,10 +42,14 @@ jobs:
       run: |
         mkdir -p /home/runner/.android
         echo "count=0" > /home/runner/.android/repositories.cfg
-        echo "license.android.sdk.preview=accepted" >> /home/runner/.android/repositories.cfg
-        cd /home/runner
-        yes 2>/dev/null | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
-        yes 2>/dev/null | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" > /dev/null 2>&1 || true
+        for license in $(find $ANDROID_HOME/licenses -type f -name '*.txt' | xargs basename -a); do
+          echo "$license" | grep -q "^" && echo "accepted" > /home/runner/.android/licenses/$license || true
+        done
+        mkdir -p /home/runner/.android/licenses
+        echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > /home/runner/.android/licenses/android-sdk-license
+        echo -e "\n504667f4c0de7973335447fc81046d58f4826b97" > /home/runner/.android/licenses/android-sdk-preview-license
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --update --no_https 2>&1 || true
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" --no_https 2>&1 || true
 
     - name: Create buildozer.spec
       run: |
@@ -60,9 +64,10 @@ jobs:
         sed -i 's/^source.dir = ./source.dir = ./' buildozer.spec
         sed -i 's/^source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas/' buildozer.spec
         sed -i 's/^android.permissions = INTERNET/android.permissions = INTERNET,ACCESS_NETWORK_STATE/' buildozer.spec
-        sed -i 's/^android.api = .*/android.api = 31/' buildozer.spec
+        sed -i 's/^android.api = .*/android.api = 34/' buildozer.spec
         sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
         sed -i 's/^android.ndk = .*/android.ndk = 25.1.8937393/' buildozer.spec
+        sed -i 's/^android.release_artifact = .*/android.release_artifact = aab/' buildozer.spec
 
     - name: Verify project files
       run: |
