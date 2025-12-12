@@ -18,10 +18,11 @@ jobs:
       with:
         python-version: '3.11'
 
+    # Aggiunto automake e lzip, spesso necessari per Buildozer
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git default-jdk-headless ant autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev openssl libssl-dev
+        sudo apt-get install -y git default-jdk-headless ant autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev openssl libssl-dev automake lzip
 
     - name: Setup Java
       uses: actions/setup-java@v3
@@ -35,17 +36,16 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        # Installiamo le dipendenze, ma ricorda: Buildozer guarda il file .spec, non questo txt!
         pip install -r requirements.txt
         pip install buildozer cython
 
+    # Questo passaggio è fondamentale per evitare blocchi sulle licenze
     - name: Accept all Android SDK licenses
       run: |
         mkdir -p /home/runner/.android
         echo "count=0" > /home/runner/.android/repositories.cfg
-        echo "license.android.sdk.preview=accepted" >> /home/runner/.android/repositories.cfg
-        cd /home/runner
-        yes 2>/dev/null | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
-        yes 2>/dev/null | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" > /dev/null 2>&1 || true
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
     - name: Create buildozer.spec
       run: |
@@ -57,16 +57,18 @@ jobs:
         sed -i 's/^package.name = myapp/package.name = voti_classeviva/' buildozer.spec
         sed -i 's/^source.dir = ./source.dir = ./' buildozer.spec
         sed -i 's/^source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas/' buildozer.spec
+        # Importante: Aggiunge i permessi Internet
         sed -i 's/^android.permissions = INTERNET/android.permissions = INTERNET,ACCESS_NETWORK_STATE/' buildozer.spec
-        sed -i 's/^android.api = .*/android.api = 31/' buildozer.spec
+        # Importante: Imposta architettura corretta per evitare errori
+        sed -i 's/^# android.archs = arm64-v8a, armeabi-v7a/android.archs = arm64-v8a/' buildozer.spec
+        sed -i 's/^android.api = .*/android.api = 33/' buildozer.spec
         sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
-        sed -i 's/^android.ndk = .*/android.ndk = 25.1.8937393/' buildozer.spec
 
     - name: Build APK with buildozer
       run: |
-        buildozer android debug 2>&1 | tee build.log
-        echo "Build completed, searching for APK..."
-        find . -name "*.apk" -type f
+        # Usiamo 'yes |' per accettare automaticamente eventuali richieste di Buildozer
+        # Abbiamo rimosso '| tee' per vedere l'errore se fallisce
+        yes | buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
