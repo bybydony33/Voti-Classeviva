@@ -5,13 +5,15 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-# IMPOSTAZIONE GLOBALE: Forza Cython a usare Python 3
+# FIX CRUCIALE 1: Forza Cython a usare Python 3
+# Risolve l'errore: "Cython directive 'language_level' not set"
 env:
   CYTHON_LANGUAGE_LEVEL: 3
 
 jobs:
   build:
-    # Usiamo Ubuntu 22.04 per compatibilità con le librerie di sistema
+    # FIX CRUCIALE 2: Usiamo Ubuntu 22.04
+    # Risolve i problemi di librerie mancanti (libtinfo5) presenti nella 24.04
     runs-on: ubuntu-22.04
 
     steps:
@@ -21,9 +23,9 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.10' # Versione più stabile per Buildozer
 
-    # Installazione dipendenze di sistema (compatibili con Ubuntu 22.04)
+    # Installazione dipendenze di sistema compatibili con Ubuntu 22.04
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -42,7 +44,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        # Installiamo cython<3.0.0 perché buildozer ha problemi con la versione 3.0+
+        # Installiamo cython<3.0.0 per compatibilità con Buildozer attuale
         pip install buildozer "cython<3.0.0"
 
     - name: Accept all Android SDK licenses
@@ -62,8 +64,8 @@ jobs:
         sed -i 's/^source.dir = ./source.dir = ./' buildozer.spec
         sed -i 's/^source.include_exts = py,png,jpg,kv,atlas/source.include_exts = py,png,jpg,kv,atlas/' buildozer.spec
         
-        # Aggiunta requisiti. Se usi Flet, ricordati che buildozer potrebbe non bastare, 
-        # ma qui stiamo configurando per Kivy/Python standard.
+        # Aggiunta requisiti. Assicurati che 'requirements.txt' sia letto o aggiunto qui.
+        # Ho aggiunto openssl e python3 che sono standard.
         sed -i 's/^requirements = python3,kivy/requirements = python3,kivy,openssl/' buildozer.spec
 
         sed -i 's/^android.permissions = INTERNET/android.permissions = INTERNET,ACCESS_NETWORK_STATE/' buildozer.spec
@@ -72,13 +74,14 @@ jobs:
         sed -i 's/^android.minapi = .*/android.minapi = 21/' buildozer.spec
         sed -i 's/^android.ndk = .*/android.ndk = 25.1.8937393/' buildozer.spec
         
-        # Usa il branch master di python-for-android per fixare problemi di compatibilità recenti
+        # Fix per Java 17 e versioni recenti di Android
         sed -i 's/^# p4a.branch = master/p4a.branch = master/' buildozer.spec
 
     - name: Build APK with buildozer
       run: |
-        # Qui la variabile CYTHON_LANGUAGE_LEVEL=3 (definita in alto) farà il suo lavoro
-        yes | buildozer android debug --log_level 2
+        # FIX CRUCIALE 3: Usiamo -v invece di --log_level 2
+        # --log_level 2 veniva interpretato come un comando errato causando il crash
+        yes | buildozer -v android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
